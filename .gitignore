@@ -1,0 +1,12 @@
+.DS_Store
+.env
+.venv/
+.omc/
+.omx/
+
+data/
+frontend/node_modules/
+frontend/dist/
+
+__pycache__/
+*.pyc

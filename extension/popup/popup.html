@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>LLM Wiki Sync</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="header">
+    <span class="logo">📚</span>
+    <span class="title">LLM Wiki Sync</span>
+  </div>
+
+  <div id="server-status" class="status-bar"></div>
+
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-value" id="pages-count">—</div>
+      <div class="stat-label">网页捕获</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="ai-count">—</div>
+      <div class="stat-label">AI 对话</div>
+    </div>
+  </div>
+
+  <div class="current">
+    <div class="current-label">当前页面</div>
+    <div class="current-url" id="current-url">—</div>
+    <div class="current-status" id="current-status"></div>
+  </div>
+
+  <div class="footer">
+    <span id="last-sync">—</span>
+    <a href="http://localhost:5173" target="_blank">控制台 →</a>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
