@@ -14,6 +14,9 @@ class SettingsUpdate(BaseModel):
     openai_api_key: Optional[str] = None
     ollama_base_url: Optional[str] = None
     ollama_model: Optional[str] = None
+    ollama_schedule_enabled: Optional[bool] = None
+    ollama_schedule_start: Optional[str] = None
+    ollama_schedule_end: Optional[str] = None
     wiki_path: Optional[str] = None
 
 
@@ -25,6 +28,9 @@ def get_settings():
         "openai_api_key": "***" if settings.openai_api_key else "",
         "ollama_base_url": settings.ollama_base_url,
         "ollama_model": settings.ollama_model,
+        "ollama_schedule_enabled": settings.ollama_schedule_enabled,
+        "ollama_schedule_start": settings.ollama_schedule_start,
+        "ollama_schedule_end": settings.ollama_schedule_end,
         "wiki_path": settings.wiki_path,
         "db_path": settings.db_path,
     }
@@ -47,6 +53,12 @@ def update_settings(body: SettingsUpdate):
     if body.ollama_model:
         settings.ollama_model = body.ollama_model
         llm.reset_client()
+    if body.ollama_schedule_enabled is not None:
+        settings.ollama_schedule_enabled = body.ollama_schedule_enabled
+    if body.ollama_schedule_start:
+        settings.ollama_schedule_start = body.ollama_schedule_start
+    if body.ollama_schedule_end:
+        settings.ollama_schedule_end = body.ollama_schedule_end
     if body.wiki_path:
         settings.wiki_path = body.wiki_path
     _persist_env()
@@ -65,6 +77,9 @@ def _persist_env():
         "OPENAI_API_KEY": settings.openai_api_key,
         "OLLAMA_BASE_URL": settings.ollama_base_url,
         "OLLAMA_MODEL": settings.ollama_model,
+        "OLLAMA_SCHEDULE_ENABLED": str(settings.ollama_schedule_enabled).lower(),
+        "OLLAMA_SCHEDULE_START": settings.ollama_schedule_start,
+        "OLLAMA_SCHEDULE_END": settings.ollama_schedule_end,
         "WIKI_PATH": settings.wiki_path,
         "DB_PATH": settings.db_path,
     }

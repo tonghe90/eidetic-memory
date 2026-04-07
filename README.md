@@ -259,7 +259,7 @@ CV / NLP · 3个月
 | Search    | 自然语言搜索框、结构化结果卡片、溯源链接                       |
 | Wiki      | 浏览 wiki 页面（内嵌或跳转 Obsidian）                 |
 | Sources   | 连接器列表、授权状态、上次同步时间                          |
-| Settings  | LLM 提供商切换（Claude / GPT-4o / Ollama）、API Key / 本地模型配置、过滤规则 |
+| Settings  | LLM 提供商切换（Claude / GPT-4o / Ollama）、API Key / 本地模型配置、Ollama 运行时段规则 |
 
 
 ---
@@ -351,7 +351,10 @@ OPENAI_API_KEY=sk-...
 
 # Ollama（本地模型，可选）
 OLLAMA_BASE_URL=http://127.0.0.1:11434
-OLLAMA_MODEL=qwen3.5-27b
+OLLAMA_MODEL=gemma4:26b
+OLLAMA_SCHEDULE_ENABLED=false
+OLLAMA_SCHEDULE_START=22:00
+OLLAMA_SCHEDULE_END=09:00
 
 # Google OAuth 凭据（Gmail 连接器必填，见下方步骤）
 GOOGLE_CLIENT_ID=xxxxxxxx.apps.googleusercontent.com
@@ -460,6 +463,16 @@ chmod +x start.sh
 2. 点击 **「开始摄取」**，LLM 将自动分类、提取、写入 wiki
 3. 完成后进入 **搜索** 页面，用自然语言查询知识库
 
+> **本地模型时段运行（Ollama）**
+>
+> 如果你把 LLM 提供商切换成 **Ollama**，可以在 **设置** 页面开启“仅在低占用时段运行本地模型任务”。
+> 例如可以设置为：
+>
+> - 开始：`22:00`
+> - 结束：`09:00`
+>
+> 这样在白天点击「开始摄取」时，任务不会立即执行，而是会先进入排队状态，等到晚间窗口自动开始。
+
 ---
 
 ### 手动启动（不用 start.sh）
@@ -501,6 +514,9 @@ Google Docs 连接器依赖 **Google Drive API + Google Docs API**。请在 Goog
 
 **Q: LLM 分类报错 `credit balance too low`**
 Anthropic 账户余额为零。前往 [console.anthropic.com/settings/billing](https://console.anthropic.com/settings/billing) 充值，或在设置页切换到有余额的 OpenAI key。
+
+**Q: 我想只在晚上跑本地模型，白天不要占机器**
+在 **设置 → 本地模型（Ollama）** 中开启“仅在低占用时段运行本地模型任务”，并配置开始/结束时间（例如 `22:00` 到 `09:00`）。如果当前不在窗口内，Dashboard 上点击「开始摄取」会显示“已排队”，并在允许时段自动启动。
 
 **Q: Chrome 历史连接器报错「未找到 History 文件」**
 macOS 需要在「系统设置 → 隐私与安全 → 完全磁盘访问」中将运行本应用的终端（Terminal / iTerm2）加入允许列表。

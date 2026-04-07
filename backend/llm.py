@@ -60,7 +60,8 @@ class _OllamaClient:
 
         self._client = httpx.AsyncClient(
             base_url=settings.ollama_base_url.rstrip("/"),
-            timeout=120.0,
+            timeout=300.0,
+            trust_env=False,
         )
 
     async def complete(self, prompt: str, max_tokens: int = 2048) -> str:

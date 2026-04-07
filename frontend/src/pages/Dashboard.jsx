@@ -12,8 +12,7 @@ const SOURCE_COLORS = {
 export default function Dashboard() {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [syncing, setSyncing] = useState(false);
-  const [log, setLog] = useState([]);
+  const [startResult, setStartResult] = useState(null);
 
   const fetchStatus = async () => {
     const res = await fetch("/ingest/status");
@@ -29,12 +28,10 @@ export default function Dashboard() {
 
   const handleIngest = async () => {
     setLoading(true);
-    await fetch("/ingest/start", { method: "POST" });
+    const res = await fetch("/ingest/start", { method: "POST" });
+    const data = await res.json();
+    setStartResult(data);
     setLoading(false);
-    setLog((prev) => [
-      { time: new Date().toLocaleTimeString(), msg: "摄取任务已启动..." },
-      ...prev,
-    ]);
     fetchStatus();
   };
 
@@ -73,17 +70,39 @@ export default function Dashboard() {
           </div>
           <button
             onClick={handleIngest}
-            disabled={loading || status?.running || pendingTotal === 0}
+            disabled={loading || status?.running || status?.scheduled || pendingTotal === 0}
             className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40
                        disabled:cursor-not-allowed rounded-lg font-semibold transition-colors"
           >
-            {status?.running ? "摄取中..." : loading ? "启动中..." : "开始摄取"}
+            {status?.running
+              ? "摄取中..."
+              : status?.scheduled
+              ? "已排队"
+              : loading
+              ? "启动中..."
+              : "开始摄取"}
           </button>
         </div>
         {status?.running && (
           <div className="flex items-center gap-2 text-sm text-indigo-400">
             <div className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse" />
             LLM 正在处理中，请稍候...
+          </div>
+        )}
+        {status?.scheduled && (
+          <div className="mt-3 text-sm text-amber-300">
+            已排队，计划在{" "}
+            {new Date(status.scheduled_for).toLocaleString("zh-CN")} 自动开始。
+            {status.llm_provider === "ollama" && status.ollama_schedule_enabled && (
+              <span className="text-xs text-gray-400 ml-2">
+                本地模型运行窗口：{status.ollama_schedule_start} - {status.ollama_schedule_end}
+              </span>
+            )}
+          </div>
+        )}
+        {startResult?.status === "scheduled" && !status?.scheduled && (
+          <div className="mt-3 text-sm text-amber-300">
+            已加入排队，将在 {new Date(startResult.scheduled_for).toLocaleString("zh-CN")} 启动。
           </div>
         )}
       </div>
