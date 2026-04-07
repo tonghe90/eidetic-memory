@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "LLM Wiki Sync",
+  "name": "Eidetic Memory Sync",
   "version": "2.0.0",
-  "description": "Universal web activity capture for your local LLM Wiki",
+  "description": "Universal web activity capture for Sheldon's Eidetic Memory",
 
   "permissions": [
     "storage",
@@ -37,7 +37,7 @@
 
   "action": {
     "default_popup": "popup/popup.html",
-    "default_title": "LLM Wiki Sync"
+    "default_title": "Eidetic Memory Sync"
   },
 
   "icons": {

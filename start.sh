@@ -39,7 +39,7 @@ cd frontend && npm run dev &
 FRONTEND_PID=$!
 
 echo ""
-echo "✅ LLM Wiki 已启动"
+echo "✅ Sheldon's Eidetic Memory 已启动"
 echo "   前端: http://localhost:5173"
 echo "   API:  http://localhost:8765"
 echo ""
