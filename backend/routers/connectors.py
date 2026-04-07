@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
 from datetime import datetime
 
@@ -187,15 +187,17 @@ async def extension_sync(payload: dict):
 # ── sync ───────────────────────────────────────────────────────────────────
 
 @router.post("/{name}/sync")
-async def sync_connector(name: str):
+async def sync_connector(name: str, full: bool = Query(False)):
     connector = get_connector(name)
     if not connector.is_authenticated():
         raise HTTPException(status_code=401, detail=f"{name} not authenticated")
 
     conn = get_db(settings.db_file)
     since = get_last_sync(conn, name)
+    # When full=True, pass since=None to bypass the 30-day default on first sync
+    effective_since = None if full else since
     try:
-        items = connector.fetch_new_items(since=since)
+        items = connector.fetch_new_items(since=effective_since, full=full)
     except Exception as e:
         conn.close()
         raise HTTPException(status_code=500, detail=str(e))

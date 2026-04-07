@@ -25,7 +25,7 @@ class _ExtensionConnector(Connector):
         conn.close()
         return row["n"] > 0
 
-    def fetch_new_items(self, since: datetime | None) -> list[Item]:
+    def fetch_new_items(self, since: datetime | None, full: bool = False) -> list[Item]:
         return []  # extension pushes data; nothing to pull
 
 

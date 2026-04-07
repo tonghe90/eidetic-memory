@@ -3,7 +3,7 @@ LLM-based answer synthesizer: takes FTS results and generates a structured answe
 """
 from __future__ import annotations
 import json
-from backend.search.index import SearchResult
+from backend.search.index import SearchResult, RawSearchResult
 from backend.llm import get_llm_client
 
 ANSWER_PROMPT = """你是一个个人知识库助手。根据以下检索到的 Wiki 片段，回答用户的问题。
@@ -37,39 +37,66 @@ ANSWER_PROMPT = """你是一个个人知识库助手。根据以下检索到的 
 """
 
 
-async def synthesize_answer(query: str, results: list[SearchResult]) -> dict:
+async def synthesize_answer(
+    query: str,
+    results: list[SearchResult],
+    raw_results: list[RawSearchResult] | None = None,
+) -> dict:
     """
     Use LLM to synthesize a structured answer from search results.
     Falls back to raw results if LLM fails.
+    raw_results are included in context but returned separately with source="raw".
     """
-    if not results:
+    raw_results = raw_results or []
+
+    if not results and not raw_results:
         return {
             "answer": "未找到相关记录。",
             "items": [],
+            "raw_items": [],
             "sources": [],
         }
 
-    # Build context string
+    # Build context string (wiki chunks first, then raw items)
     context_parts = []
     for i, r in enumerate(results, 1):
         heading = f"[{r.heading}] " if r.heading else ""
         src_note = f" (来源: {r.source_url})" if r.source_url else ""
         context_parts.append(f"[{i}] {heading}{r.chunk}{src_note}")
+    offset = len(results)
+    for i, r in enumerate(raw_results, offset + 1):
+        src_note = f" (来源: {r.source_url})" if r.source_url else ""
+        context_parts.append(f"[{i}] [原始/{r.source}] {r.title}: {r.body[:300]}{src_note}")
     context = "\n\n".join(context_parts)
 
     client = get_llm_client()
     prompt = ANSWER_PROMPT.format(query=query, context=context[:6000])
 
+    # Build raw_items list (always returned regardless of LLM success)
+    raw_items_out = [
+        {
+            "title": r.title,
+            "summary": r.body[:120],
+            "source": r.source,
+            "source_url": r.source_url,
+            "timestamp": r.timestamp,
+            "metadata": {},
+            "result_source": "raw",
+        }
+        for r in raw_results
+    ]
+
     try:
         text = await client.complete(prompt, max_tokens=2048)
         start, end = text.find("{"), text.rfind("}") + 1
         result = json.loads(text[start:end])
+        result["raw_items"] = raw_items_out
         return result
     except Exception as e:
         print(f"[search] synthesize failed: {e}")
-        # Fallback: return raw results as items
+        # Fallback: return wiki results as items
         return {
-            "answer": f"找到 {len(results)} 条相关内容：",
+            "answer": f"找到 {len(results)} 条 Wiki 内容，{len(raw_results)} 条原始内容：",
             "items": [
                 {
                     "title": r.heading or r.wiki_page,
@@ -77,9 +104,11 @@ async def synthesize_answer(query: str, results: list[SearchResult]) -> dict:
                     "source": r.source,
                     "source_url": r.source_url,
                     "metadata": {},
+                    "result_source": "wiki",
                 }
                 for r in results
             ],
+            "raw_items": raw_items_out,
             "sources": [
                 {"label": r.source or r.wiki_page, "url": r.source_url}
                 for r in results

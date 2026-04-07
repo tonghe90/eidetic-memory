@@ -18,8 +18,9 @@ class Connector(ABC):
         """Check if valid credentials exist."""
 
     @abstractmethod
-    def fetch_new_items(self, since: datetime | None) -> list[Item]:
-        """Fetch items newer than `since`. Returns unified Item list."""
+    def fetch_new_items(self, since: datetime | None, full: bool = False) -> list[Item]:
+        """Fetch items newer than `since`. Returns unified Item list.
+        When full=True and since=None, pull entire history (no 30-day default cutoff)."""
 
     def test_connection(self) -> bool:
         """Quick connectivity check. Override for custom logic."""

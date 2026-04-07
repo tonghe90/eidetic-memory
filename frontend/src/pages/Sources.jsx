@@ -61,10 +61,13 @@ export default function Sources() {
     else alert(`未检测到 ${name} 授权，请确认已完成系统设置后重试。`);
   };
 
-  const handleSync = async (name) => {
+  const handleSync = async (name, full = false) => {
     setSyncing((p) => ({ ...p, [name]: true }));
     try {
-      const res = await fetch(`/connectors/${name}/sync`, { method: "POST" });
+      const url = full
+        ? `/connectors/${name}/sync?full=true`
+        : `/connectors/${name}/sync`;
+      const res = await fetch(url, { method: "POST" });
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.detail || `同步失败 (${res.status})`);
@@ -138,6 +141,19 @@ export default function Sources() {
                                disabled:opacity-40 transition-colors"
                   >
                     {syncing[c.name] ? "同步中..." : "同步"}
+                  </button>
+                )}
+
+                {c.authenticated && c.last_sync && c.auth_type !== "extension" && (
+                  <button
+                    onClick={() => handleSync(c.name, true)}
+                    disabled={syncing[c.name]}
+                    className="px-4 py-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-600
+                               rounded-lg text-xs text-gray-400 hover:text-gray-200
+                               disabled:opacity-40 transition-colors"
+                    title="拉取全部历史记录（可能较慢）"
+                  >
+                    {syncing[c.name] ? "同步中..." : "同步全部历史"}
                   </button>
                 )}
               </div>

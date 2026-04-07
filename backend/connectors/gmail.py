@@ -2,7 +2,7 @@ from __future__ import annotations
 import base64
 import os
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from google.oauth2.credentials import Credentials
@@ -67,13 +67,13 @@ class GmailConnector(Connector):
 
     # ── fetch ──────────────────────────────────────────────────────────────
 
-    def fetch_new_items(self, since: datetime | None) -> list[Item]:
+    def fetch_new_items(self, since: datetime | None, full: bool = False) -> list[Item]:
         self._load_creds()
         if not self._creds or not self._creds.valid:
             raise RuntimeError("Gmail not authenticated")
 
         service = build("gmail", "v1", credentials=self._creds)
-        query = self._build_query(since)
+        query = self._build_query(since, full=full)
         messages = self._list_messages(service, query)
 
         items = []
@@ -114,9 +114,13 @@ class GmailConnector(Connector):
             self._creds.refresh(Request())
             TOKEN_PATH.write_text(self._creds.to_json())
 
-    def _build_query(self, since: datetime | None) -> str:
+    def _build_query(self, since: datetime | None, full: bool = False) -> str:
         if since:
             return f"after:{int(since.timestamp())}"
+        if not full:
+            # First sync: default to last 30 days to avoid pulling entire history
+            cutoff = datetime.now(timezone.utc) - timedelta(days=30)
+            return f"after:{int(cutoff.timestamp())}"
         return ""
 
     def _list_messages(self, service, query: str) -> list[dict]:

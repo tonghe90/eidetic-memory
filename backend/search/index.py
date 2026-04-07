@@ -38,6 +38,17 @@ def _init_schema(conn: sqlite3.Connection):
             source_url,
             tokenize='unicode61 remove_diacritics 1'
         );
+
+        CREATE VIRTUAL TABLE IF NOT EXISTS raw_fts USING fts5(
+            item_id,
+            source,
+            title,
+            body,           -- stores tokenized text (spaces between CJK chars)
+            body_raw,       -- original text for display
+            source_url,
+            timestamp,
+            tokenize='unicode61 remove_diacritics 1'
+        );
     """)
     conn.commit()
 
@@ -69,6 +80,25 @@ def index_wiki_page(conn: sqlite3.Connection, page_path: str):
                 chunk.source, chunk.source_url,
             ),
         )
+    conn.commit()
+
+
+def index_raw_item(conn: sqlite3.Connection, item) -> None:
+    """Index a raw Item into the raw_fts table. Replaces any existing entry for item.id."""
+    conn.execute("DELETE FROM raw_fts WHERE item_id = ?", (item.id,))
+    conn.execute(
+        """INSERT INTO raw_fts (item_id, source, title, body, body_raw, source_url, timestamp)
+           VALUES (?, ?, ?, ?, ?, ?, ?)""",
+        (
+            item.id,
+            item.source,
+            _cjk_tokenize(item.title),
+            _cjk_tokenize(item.body),
+            item.body,
+            item.source_url,
+            item.timestamp.isoformat() if hasattr(item.timestamp, "isoformat") else str(item.timestamp),
+        ),
+    )
     conn.commit()
 
 
@@ -123,10 +153,51 @@ def search(conn: sqlite3.Connection, query: str, limit: int = 10) -> list[Search
     ]
 
 
+@dataclass
+class RawSearchResult:
+    item_id: str
+    source: str
+    title: str
+    body: str
+    source_url: str
+    timestamp: str
+    score: float
+
+
+def search_raw(conn: sqlite3.Connection, query: str, limit: int = 10) -> list[RawSearchResult]:
+    """FTS5 full-text search over raw items. Returns ranked results."""
+    safe_query = _fts_escape(query)
+    if not safe_query:
+        return []
+
+    rows = conn.execute(
+        """SELECT item_id, source, title, body_raw, source_url, timestamp, rank as score
+           FROM raw_fts
+           WHERE raw_fts MATCH ?
+           ORDER BY rank
+           LIMIT ?""",
+        (safe_query, limit),
+    ).fetchall()
+
+    return [
+        RawSearchResult(
+            item_id=r["item_id"],
+            source=r["source"],
+            title=r["title"],
+            body=r["body_raw"],
+            source_url=r["source_url"],
+            timestamp=r["timestamp"],
+            score=r["score"],
+        )
+        for r in rows
+    ]
+
+
 def get_index_stats(conn: sqlite3.Connection) -> dict:
     row = conn.execute("SELECT COUNT(*) as n FROM search_fts").fetchone()
     pages = conn.execute("SELECT COUNT(DISTINCT wiki_page) as n FROM search_fts").fetchone()
-    return {"chunks": row["n"], "pages": pages["n"]}
+    raw_row = conn.execute("SELECT COUNT(*) as n FROM raw_fts").fetchone()
+    return {"chunks": row["n"], "pages": pages["n"], "raw_items": raw_row["n"]}
 
 
 # ── Helpers ─────────────────────────────────────────────────────────────────

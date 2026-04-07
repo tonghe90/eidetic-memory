@@ -1,6 +1,6 @@
 from __future__ import annotations
 from fastapi import APIRouter, Query
-from backend.search.index import get_search_db, search, reindex_all, get_index_stats
+from backend.search.index import get_search_db, search, search_raw, reindex_all, get_index_stats
 from backend.search.answerer import synthesize_answer
 
 router = APIRouter(prefix="/search", tags=["search"])
@@ -9,17 +9,20 @@ router = APIRouter(prefix="/search", tags=["search"])
 @router.get("/")
 async def do_search(q: str = Query(..., min_length=1)):
     """
-    Natural language search over the wiki.
+    Natural language search over wiki pages and raw items.
     Returns a structured answer with source attribution links.
+    Wiki results are in 'items'; raw original-content results are in 'raw_items'.
     """
     conn = get_search_db()
     results = search(conn, q, limit=10)
+    raw_results = search_raw(conn, q, limit=10)
     conn.close()
 
-    answer = await synthesize_answer(q, results)
+    answer = await synthesize_answer(q, results, raw_results)
     return {
         "query": q,
         "result_count": len(results),
+        "raw_result_count": len(raw_results),
         **answer,
     }
 

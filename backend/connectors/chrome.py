@@ -42,7 +42,7 @@ class ChromeConnector(Connector):
     def is_authenticated(self) -> bool:
         return self._find_history_db() is not None
 
-    def fetch_new_items(self, since: datetime | None) -> list[Item]:
+    def fetch_new_items(self, since: datetime | None, full: bool = False) -> list[Item]:
         db_path = self._find_history_db()
         if not db_path:
             raise RuntimeError(

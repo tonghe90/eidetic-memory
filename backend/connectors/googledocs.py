@@ -3,7 +3,7 @@ Google Docs connector.
 Uses Drive API to list recently modified docs, Docs API to read content.
 """
 from __future__ import annotations
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from googleapiclient.discovery import build
@@ -30,7 +30,7 @@ class GoogleDocsConnector(GoogleOAuthConnector):
     token_path = TOKEN_PATH
     callback_url = CALLBACK_URL
 
-    def fetch_new_items(self, since: datetime | None) -> list[Item]:
+    def fetch_new_items(self, since: datetime | None, full: bool = False) -> list[Item]:
         self._load_creds()
         if not self._creds or not self._creds.valid:
             raise RuntimeError("Google Docs not authenticated")
@@ -38,7 +38,7 @@ class GoogleDocsConnector(GoogleOAuthConnector):
         drive = build("drive", "v3", credentials=self._creds)
         docs  = build("docs",  "v1", credentials=self._creds)
 
-        files = self._list_docs(drive, since)
+        files = self._list_docs(drive, since, full=full)
         print(f"[googledocs] {len(files)} docs to fetch")
 
         items = []
@@ -53,10 +53,14 @@ class GoogleDocsConnector(GoogleOAuthConnector):
 
     # ── private ────────────────────────────────────────────────────────────
 
-    def _list_docs(self, drive, since: datetime | None) -> list[dict]:
+    def _list_docs(self, drive, since: datetime | None, full: bool = False) -> list[dict]:
         query = "mimeType='application/vnd.google-apps.document' and trashed=false"
         if since:
             query += f" and modifiedTime > '{since.strftime('%Y-%m-%dT%H:%M:%SZ')}'"
+        elif not full:
+            # First sync: default to last 30 days to avoid pulling entire history
+            cutoff = datetime.now(timezone.utc) - timedelta(days=30)
+            query += f" and modifiedTime > '{cutoff.strftime('%Y-%m-%dT%H:%M:%SZ')}'"
 
         results, page_token = [], None
         while True:

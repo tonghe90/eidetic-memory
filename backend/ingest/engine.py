@@ -12,7 +12,7 @@ from backend.db.raw import get_db, get_pending_items, mark_ingested, Item
 from backend.config import settings
 from backend.ingest.classifier import classify_and_extract
 from backend.ingest.fetcher import fetch_article_text
-from backend.search.index import get_search_db, index_wiki_page
+from backend.search.index import get_search_db, index_wiki_page, index_raw_item
 from backend.ingest.wiki_writer import (
     write_applicants_page,
     write_topic_page,
@@ -106,13 +106,20 @@ async def run_ingest(
     if pages_written:
         update_index(pages_written)
 
-    # Step 6: update search index for written pages
+    # Step 6: update search index for written pages and index raw items
+    sconn = get_search_db()
     if pages_written:
-        sconn = get_search_db()
         for page in pages_written:
             index_wiki_page(sconn, page)
-        sconn.close()
         print(f"[ingest] search index updated ({len(pages_written)} pages)")
+    # Index all processed items (classified + skipped) into raw_fts
+    all_processed_items = [item for item, _, _ in classified]
+    skipped_items = [item for item in items if item.id in set(skipped_ids)]
+    for item in all_processed_items + skipped_items:
+        index_raw_item(sconn, item)
+    sconn.close()
+    if all_processed_items or skipped_items:
+        print(f"[ingest] raw index updated ({len(all_processed_items) + len(skipped_items)} items)")
 
     conn.close()
     return {
